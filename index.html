@@ -1,0 +1,1556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>H2Know - Caregiver App</title>
+
+  <!-- Firebase v8 compat CDN libraries, as required by the assignment -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <!-- Compact historical graphs -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #e8f7ee;
+      color: #1f2937;
+      transition: background 0.3s ease;
+    }
+
+    body.risk {
+      background: #ffdada;
+    }
+
+    .login-page {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 28px 18px;
+    }
+
+    .patient-like-shell {
+      width: 100%;
+      max-width: 520px;
+    }
+
+    .patient-like-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+      gap: 12px;
+    }
+
+    .patient-like-top h1 {
+      margin: 0;
+      font-size: 34px;
+      color: #111827;
+    }
+
+    .login-card {
+      width: 100%;
+      background: white;
+      padding: 28px;
+      border-radius: 22px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.12);
+    }
+
+    .patient-like-card h2 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+
+    .login-card p {
+      color: #6b7280;
+      margin-bottom: 22px;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-weight: normal;
+      line-height: 1.4;
+      margin: 16px 0;
+      color: #374151;
+    }
+
+    .checkbox-row input {
+      width: auto;
+      margin-top: 3px;
+    }
+
+    .login-fields {
+      margin-top: 14px;
+    }
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin: 12px 0 6px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 12px 16px;
+      background: #2563eb;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 15px;
+    }
+
+    button.gray {
+      background: #4b5563;
+    }
+
+    .login-card button {
+      width: 100%;
+      margin-top: 18px;
+    }
+
+    .page {
+      display: none;
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 22px;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 32px;
+    }
+
+    .subtitle {
+      margin-top: 6px;
+      color: #6b7280;
+      font-size: 15px;
+    }
+
+    .connection {
+      padding: 12px 18px;
+      border-radius: 999px;
+      font-weight: bold;
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #ef4444;
+    }
+
+    .connection.connected {
+      background: #d1fae5;
+      color: #065f46;
+      border-color: #10b981;
+    }
+
+    .main-status {
+      border-radius: 20px;
+      padding: 20px;
+      margin-bottom: 16px;
+      background: white;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+      border-left: 12px solid #10b981;
+    }
+
+    .main-status.risk {
+      border-left-color: #dc2626;
+    }
+
+    .status-title {
+      font-size: 26px;
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #059669;
+    }
+
+    .status-title.risk {
+      color: #dc2626;
+      animation: blink 0.9s infinite;
+    }
+
+    .status-message {
+      font-size: 17px;
+      line-height: 1.45;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.45; }
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .metric-card {
+      background: white;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+      border-top: 6px solid #10b981;
+      min-height: 130px;
+    }
+
+    .metric-card.risk {
+      border-top-color: #dc2626;
+    }
+
+    .metric-name {
+      font-size: 14px;
+      color: #6b7280;
+      margin-bottom: 8px;
+    }
+
+    .metric-value {
+      font-size: 30px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .metric-note {
+      font-size: 13px;
+      font-weight: bold;
+      color: #059669;
+    }
+
+    .metric-note.risk {
+      color: #dc2626;
+    }
+
+    .charts {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .chart-card {
+      background: white;
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+      height: 230px;
+    }
+
+    .chart-card h3 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+
+    .bottom-panel {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 14px;
+    }
+
+    .panel {
+      background: white;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+    }
+
+    .panel h2 {
+      margin-top: 0;
+      font-size: 19px;
+    }
+
+    .history-list {
+      display: grid;
+      gap: 8px;
+      max-height: 150px;
+      overflow-y: auto;
+      padding-right: 6px;
+    }
+
+    .history-item {
+      background: #f3f4f6;
+      border-radius: 10px;
+      padding: 9px 10px;
+      font-size: 13px;
+    }
+
+    .history-item.risk {
+      background: #fee2e2;
+      color: #991b1b;
+      font-weight: bold;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .small {
+      color: #6b7280;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    #popup {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      z-index: 100;
+    }
+
+    #popup.show {
+      display: flex;
+    }
+
+    .popup-box {
+      background: white;
+      border-radius: 20px;
+      padding: 28px;
+      width: 100%;
+      max-width: 520px;
+      text-align: center;
+      border: 6px solid #dc2626;
+      animation: blink 0.9s infinite;
+    }
+
+    .popup-box h2 {
+      color: #dc2626;
+      margin-top: 0;
+      font-size: 30px;
+    }
+
+    .popup-box p {
+      color: #dc2626;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+
+    .brand-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-mark {
+      width: 58px;
+      height: 58px;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(145deg, #0ea5e9, #2563eb);
+      color: white;
+      font-weight: 800;
+      font-size: 21px;
+      box-shadow: 0 8px 18px rgba(37, 99, 235, 0.24);
+    }
+
+    .small-mark {
+      width: 50px;
+      height: 50px;
+      border-radius: 15px;
+      font-size: 18px;
+    }
+
+    .brand-tagline {
+      margin-top: 3px;
+      color: #64748b;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .patient-like-card {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(14, 165, 233, 0.12);
+    }
+
+    .patient-like-card::before {
+      content: "";
+      position: absolute;
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      background: rgba(14, 165, 233, 0.07);
+      top: -95px;
+      right: -75px;
+    }
+
+    .hero-illustration {
+      height: 120px;
+      border-radius: 18px;
+      margin-bottom: 22px;
+      background: linear-gradient(135deg, #effaff, #e8f7ee);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 22px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .water-drop {
+      font-size: 58px;
+      filter: drop-shadow(0 8px 10px rgba(37, 99, 235, 0.16));
+    }
+
+    .pulse-line {
+      font-size: 28px;
+      color: #ef4444;
+      font-weight: 800;
+      letter-spacing: 2px;
+    }
+
+    .login-card input:focus {
+      outline: none;
+      border-color: #0ea5e9;
+      box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.12);
+    }
+
+    .login-card button {
+      background: linear-gradient(135deg, #0ea5e9, #2563eb);
+      box-shadow: 0 7px 16px rgba(37, 99, 235, 0.22);
+    }
+
+    .metric-card,
+    .chart-card,
+    .panel,
+    .main-status {
+      border: 1px solid rgba(148, 163, 184, 0.16);
+    }
+
+    .metric-card {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .metric-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 24px rgba(0,0,0,0.09);
+    }
+
+
+    /* Patient-app aligned visual style */
+    body {
+      background: linear-gradient(180deg, #eaf7f0 0%, #f6fbf8 100%);
+    }
+
+    body.risk {
+      background: linear-gradient(180deg, #ffe1e1 0%, #fff4f4 100%);
+    }
+
+    .login-page {
+      align-items: flex-start;
+      padding-top: 24px;
+    }
+
+    .app-shell {
+      width: 100%;
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    .app-header,
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .app-header h1 {
+      margin: 0;
+      font-size: 40px;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.5px;
+    }
+
+    .connected-time {
+      color: #64748b;
+      font-size: 13px;
+      text-align: right;
+      margin-top: 6px;
+    }
+
+    .welcome-card {
+      background: white;
+      border-radius: 24px;
+      padding: 30px;
+      box-shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      margin-top: 18px;
+    }
+
+    .welcome-card h2 {
+      margin: 0 0 8px;
+      font-size: 30px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .welcome-card p {
+      margin: 0 0 22px;
+      color: #64748b;
+      font-size: 16px;
+    }
+
+    .consent-line {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      margin: 18px 0;
+      font-weight: 500;
+      line-height: 1.45;
+      color: #334155;
+    }
+
+    .consent-line input {
+      width: auto;
+      margin-top: 3px;
+      accent-color: #22c55e;
+    }
+
+    .login-fields {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 16px 0 4px;
+    }
+
+    .login-fields input {
+      border-radius: 14px;
+      border: 1px solid #dbe3ea;
+      padding: 13px 14px;
+      background: #f8fafc;
+    }
+
+    .primary-btn,
+    .login-card button,
+    button {
+      background: #22c55e;
+      color: white;
+      border-radius: 14px;
+      padding: 13px 18px;
+      box-shadow: none;
+    }
+
+    .primary-btn:hover,
+    button:hover {
+      filter: brightness(0.96);
+    }
+
+    .page {
+      max-width: 980px;
+    }
+
+    .main-status {
+      border-left: none;
+      border-top: 6px solid #22c55e;
+      border-radius: 22px;
+      padding: 22px;
+    }
+
+    .main-status.risk {
+      border-top-color: #ef4444;
+    }
+
+    .status-title {
+      color: #0f172a;
+    }
+
+    .status-title.risk {
+      color: #dc2626;
+    }
+
+    .metrics {
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    .metric-card {
+      border-top: none;
+      border-radius: 22px;
+      min-height: 128px;
+    }
+
+    .metric-card.risk {
+      box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3), 0 6px 18px rgba(0,0,0,0.08);
+    }
+
+    .metric-name {
+      color: #475569;
+      font-weight: 700;
+    }
+
+    .metric-value {
+      color: #0f172a;
+    }
+
+    .metric-note {
+      color: #22c55e;
+    }
+
+    .metric-note.risk {
+      color: #ef4444;
+    }
+
+    .charts,
+    .bottom-panel {
+      margin-top: 16px;
+    }
+
+    .chart-card,
+    .panel {
+      border-radius: 22px;
+    }
+
+    .connection {
+      background: #e2e8f0;
+      color: #475569;
+      border: none;
+      border-radius: 999px;
+      padding: 10px 15px;
+      font-size: 14px;
+    }
+
+    .connection.connected {
+      background: #dcfce7;
+      color: #15803d;
+      border: none;
+    }
+
+    .history-item {
+      background: #f8fafc;
+    }
+
+    .history-item.risk {
+      background: #fee2e2;
+    }
+
+    @media (max-width: 620px) {
+      .login-fields {
+        grid-template-columns: 1fr;
+      }
+
+      .app-header h1 {
+        font-size: 34px;
+      }
+    }
+
+    @media (max-width: 1000px) {
+      .metrics, .charts {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .bottom-panel {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .page {
+        padding: 14px;
+      }
+
+      .metrics, .charts {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        font-size: 27px;
+      }
+    }
+  
+    /* Vertical app-like layout with small illustrations */
+    .page,
+    .app-shell {
+      max-width: 560px !important;
+    }
+
+    .top-bar,
+    .dashboard-header,
+    .app-header {
+      align-items: center;
+    }
+
+    .status-layout {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .status-illustration {
+      width: 118px;
+      min-width: 118px;
+      height: 118px;
+      border-radius: 28px;
+      background: linear-gradient(145deg, #ecfeff, #dcfce7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      box-shadow: inset 0 0 0 1px rgba(14, 165, 233, 0.12);
+    }
+
+    .patch-icon {
+      font-size: 52px;
+      transform: rotate(-14deg);
+    }
+
+    .drop-icon {
+      position: absolute;
+      right: 18px;
+      bottom: 18px;
+      font-size: 28px;
+    }
+
+    body.risk .status-illustration {
+      background: linear-gradient(145deg, #fff1f2, #fee2e2);
+    }
+
+    .metrics {
+      grid-template-columns: 1fr !important;
+      gap: 12px;
+    }
+
+    .metric-card {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      min-height: auto;
+      padding: 18px 20px;
+    }
+
+    .metric-name {
+      grid-column: 1 / 2;
+      font-size: 15px;
+    }
+
+    .metric-value {
+      grid-column: 2 / 3;
+      grid-row: 1 / 3;
+      text-align: right;
+      font-size: 28px;
+      white-space: nowrap;
+    }
+
+    .metric-note {
+      grid-column: 1 / 2;
+    }
+
+    .metric-emoji {
+      font-size: 20px;
+      margin-right: 6px;
+    }
+
+    .charts {
+      grid-template-columns: 1fr !important;
+      gap: 12px;
+    }
+
+    .chart-card {
+      height: 190px;
+    }
+
+    .bottom-panel {
+      grid-template-columns: 1fr !important;
+    }
+
+    .panel {
+      margin-bottom: 4px;
+    }
+
+    .welcome-card::before {
+      content: "💧";
+      float: right;
+      font-size: 48px;
+      margin-left: 12px;
+      filter: drop-shadow(0 6px 8px rgba(14,165,233,0.18));
+    }
+
+    .welcome-card::after {
+      content: "🩹";
+      position: absolute;
+      right: 36px;
+      top: 92px;
+      font-size: 34px;
+      transform: rotate(-16deg);
+      opacity: 0.9;
+    }
+
+    .welcome-card {
+      position: relative;
+      padding-top: 34px;
+    }
+
+    @media (max-width: 620px) {
+      .metric-card {
+        grid-template-columns: 1fr;
+      }
+
+      .metric-value {
+        grid-column: 1;
+        grid-row: auto;
+        text-align: left;
+      }
+
+      .status-layout {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .status-illustration {
+        width: 100%;
+        min-width: 0;
+        height: 96px;
+      }
+    }
+
+  
+    .sound-ready {
+      background: #16a34a !important;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- FR01: Login screen - matched to the Patient Webapp style -->
+  <section id="loginPage" class="login-page">
+    <div class="app-shell">
+      <div class="app-header">
+        <div>
+          <h1>H2Know</h1>
+        </div>
+        <div>
+          <div class="connection">Patient App Disconnected</div>
+          <div class="connected-time">Connected for 0m</div>
+        </div>
+      </div>
+
+      <div class="welcome-card">
+        <h2>Welcome</h2>
+        <p>Connect your caregiver monitoring dashboard</p>
+
+        <label class="consent-line">
+          <input id="caregiverConsent" type="checkbox" />
+          <span>I authorize H2Know to securely sync my patient's medical data from the smart patch</span>
+        </label>
+
+        <div class="login-fields">
+          <input id="username" type="text" placeholder="Username" />
+          <input id="idNumber" type="text" placeholder="ID Number" />
+        </div>
+
+        <button onclick="login()" class="primary-btn">Connect & Start</button>
+
+        <p id="loginError" class="small hidden" style="color:#dc2626;font-weight:bold;">
+          Please enter username, ID number and approve data synchronization.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <main id="dashboard" class="page">
+    <div class="app-header dashboard-header">
+      <div>
+        <h1>H2Know</h1>
+      </div>
+      <div>
+        <div id="connection" class="connection">Patient App Disconnected</div>
+        <div class="connected-time">Caregiver Dashboard</div>
+      </div>
+    </div>
+
+    <section id="mainStatus" class="main-status">
+      <div class="status-layout">
+        <div>
+          <div id="statusTitle" class="status-title">Patient Status: Normal</div>
+          <div id="statusMessage" class="status-message">
+            No dehydration risk is currently detected.
+          </div>
+        </div>
+        <div class="status-illustration" aria-hidden="true">
+          <div class="patch-icon">🩹</div>
+          <div class="drop-icon">💧</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="metrics">
+      <div id="heartCard" class="metric-card">
+        <div class="metric-name"><span class="metric-emoji">❤️</span> Heart Rate</div>
+        <div class="metric-value"><span id="heartRate">--</span> BPM</div>
+        <div id="heartNote" class="metric-note">Normal threshold: ≤ 100 BPM</div>
+      </div>
+
+      <div id="tempCard" class="metric-card">
+        <div class="metric-name"><span class="metric-emoji">🌡️</span> Body Temperature</div>
+        <div class="metric-value"><span id="temperature">--</span> °C</div>
+        <div id="tempNote" class="metric-note">Normal range: 36–37.7°C</div>
+      </div>
+
+      <div id="condCard" class="metric-card">
+        <div class="metric-name"><span class="metric-emoji">💧</span> Tissue Conductivity</div>
+        <div class="metric-value"><span id="conductivity">--</span>%</div>
+        <div id="condNote" class="metric-note">Normal threshold: ≥ 70%</div>
+      </div>
+
+      <div id="stabCard" class="metric-card">
+        <div class="metric-name"><span class="metric-emoji">⚖️</span> Stability Score</div>
+        <div class="metric-value"><span id="stability">--</span></div>
+        <div id="stabNote" class="metric-note">Normal threshold: ≥ 60</div>
+      </div>
+    </section>
+
+    <!-- FR03: Historical graph for each parameter -->
+    <section class="charts">
+      <div class="chart-card">
+        <h3>Heart Rate History</h3>
+        <canvas id="heartChart"></canvas>
+      </div>
+
+      <div class="chart-card">
+        <h3>Temperature History</h3>
+        <canvas id="tempChart"></canvas>
+      </div>
+
+      <div class="chart-card">
+        <h3>Conductivity History</h3>
+        <canvas id="condChart"></canvas>
+      </div>
+
+      <div class="chart-card">
+        <h3>Stability History</h3>
+        <canvas id="stabChart"></canvas>
+      </div>
+    </section>
+
+    <section class="bottom-panel">
+      <div class="panel">
+        <h2>Recent Measurements</h2>
+        <div id="history" class="history-list">
+          <div class="history-item">Waiting for patient app data...</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Demo Notes</h2>
+        <p class="small">
+          This caregiver app listens to Firebase Realtime Database and updates automatically when the patient app sends new readings.
+        </p>
+        <p class="small">
+          The alert is displayed when a value crosses the required threshold or when the patient app forces a demo alert.
+        </p>
+        <p class="small">
+          Last update: <span id="lastUpdate">No data yet</span>
+        </p>
+        <button id="soundBtn" class="primary-btn" type="button">Enable Alert Sound</button>
+      </div>
+    </section>
+  </main>
+
+  <div id="popup">
+    <div class="popup-box">
+      <h2>⚠️ Dehydration Risk</h2>
+      <p>Dehydration risk detected for your patient – please check on your patient.</p>
+      <button onclick="dismissPopup()">OK</button>
+    </div>
+  </div>
+
+  <script>
+    // --- FIREBASE CONFIGURATION ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyC9RUl-cTtvWGfOd43Yn7NYDLMq1cYCvXE",
+      authDomain: "h2know-demo.firebaseapp.com",
+      databaseURL: "https://h2know-demo-default-rtdb.firebaseio.com/",
+      projectId: "h2know-demo",
+      storageBucket: "h2know-demo.appspot.com",
+      messagingSenderId: "91107611504",
+      appId: "1:91107611504:web:3b4071b088f18db19cb5b5"
+    };
+
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+
+    const database = firebase.database();
+
+    const THRESHOLDS = {
+      heartRate: 100,
+      tempLow: 36,
+      tempHigh: 37.7,
+      conductivity: 70,
+      stability: 60
+    };
+
+    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+    let soundEnabled = false;
+    let popupDismissed = false;
+    let previousRisk = false;
+    let lastSavedTimestamp = 0;
+    let latestReadingKey = "";
+    let historyRows = [];
+
+    function enableAlertSound() {
+      soundEnabled = true;
+      unlockSound();
+
+      const btn = document.getElementById("soundBtn");
+      if (btn) {
+        btn.innerText = "Alert Sound Enabled";
+        btn.classList.add("sound-ready");
+      }
+    }
+
+    document.addEventListener("click", function(event) {
+      if (event.target && event.target.id === "soundBtn") {
+        enableAlertSound();
+      }
+    });
+
+    function login() {
+      const username = document.getElementById("username").value.trim();
+      const idNumber = document.getElementById("idNumber").value.trim();
+      const consent = document.getElementById("caregiverConsent").checked;
+
+      if (!username || !idNumber || !consent) {
+        document.getElementById("loginError").classList.remove("hidden");
+        return;
+      }
+
+      document.getElementById("loginError").classList.add("hidden");
+      document.getElementById("loginPage").style.display = "none";
+      document.getElementById("dashboard").style.display = "block";
+
+      unlockSound();
+      initializeCharts();
+    }
+
+    // Browser policy blocks sound before user interaction.
+    // Because login requires a click, the alert sound is unlocked during login.
+    function unlockSound() {
+      soundEnabled = true;
+
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        gain.gain.value = 0.001;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+
+        setTimeout(() => {
+          osc.stop();
+          ctx.close();
+        }, 80);
+      } catch (e) {
+        console.log("Sound unlock error:", e);
+      }
+    }
+
+    function playBeep() {
+      if (!soundEnabled) return;
+
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const master = ctx.createGain();
+        master.connect(ctx.destination);
+
+        const now = ctx.currentTime;
+        master.gain.setValueAtTime(0.0001, now);
+        master.gain.exponentialRampToValueAtTime(0.42, now + 0.02);
+        master.gain.setValueAtTime(0.42, now + 0.62);
+        master.gain.exponentialRampToValueAtTime(0.0001, now + 0.85);
+
+        const tones = [
+          { frequency: 740, start: 0.00, duration: 0.22 },
+          { frequency: 620, start: 0.28, duration: 0.22 },
+          { frequency: 740, start: 0.56, duration: 0.24 }
+        ];
+
+        tones.forEach(tone => {
+          const osc = ctx.createOscillator();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(tone.frequency, now + tone.start);
+          osc.connect(master);
+          osc.start(now + tone.start);
+          osc.stop(now + tone.start + tone.duration);
+        });
+
+        setTimeout(() => ctx.close(), 1100);
+      } catch (e) {
+        console.log("Sound error:", e);
+      }
+    }
+
+    function startAlertSound() {
+      // One short alert sound only, no repeated sound loop.
+      playBeep();
+    }
+
+    function stopAlertSound() {
+      // No repeated sound is used, so there is nothing to stop.
+    }
+
+    function dismissPopup() {
+      popupDismissed = true;
+      stopAlertSound();
+      document.getElementById("popup").classList.remove("show");
+    }
+
+    function getNumber(obj, keys) {
+      for (const key of keys) {
+        if (obj && obj[key] !== undefined && obj[key] !== null && obj[key] !== "") {
+          const value = Number(obj[key]);
+          if (!Number.isNaN(value)) return value;
+        }
+      }
+      return null;
+    }
+
+    function getBoolean(obj, keys) {
+      for (const key of keys) {
+        if (obj && obj[key] !== undefined && obj[key] !== null) {
+          const value = obj[key];
+
+          if (typeof value === "boolean") return value;
+          if (typeof value === "number") return value === 1;
+          if (typeof value === "string") {
+            const clean = value.toLowerCase().trim();
+
+            if (
+              clean === "false" ||
+              clean === "no" ||
+              clean === "disconnected" ||
+              clean === "offline" ||
+              clean === "not connected"
+            ) {
+              return false;
+            }
+
+            return (
+              clean === "true" ||
+              clean === "risk" ||
+              clean === "alert" ||
+              clean === "yes" ||
+              clean === "connected" ||
+              clean === "online"
+            );
+          }
+        }
+      }
+      return null;
+    }
+
+    function hasReading(obj) {
+      if (!obj || typeof obj !== "object") return false;
+
+      return (
+        getNumber(obj, ["heartRate", "heart_rate", "pulse", "bpm", "hr"]) !== null ||
+        getNumber(obj, ["temperature", "bodyTemperature", "temp"]) !== null ||
+        getNumber(obj, ["conductivity", "tissueConductivity", "tissue_conductivity"]) !== null ||
+        getNumber(obj, ["stability", "stabilityScore", "stability_score"]) !== null
+      );
+    }
+
+    function findReading(root) {
+      if (!root || typeof root !== "object") return null;
+
+      if (hasReading(root)) {
+        return { reading: root, key: "root" };
+      }
+
+      const candidates = [];
+
+      function scan(node, path) {
+        if (!node || typeof node !== "object") return;
+
+        if (hasReading(node)) {
+          candidates.push({ reading: node, key: path });
+        }
+
+        for (const key in node) {
+          if (Object.prototype.hasOwnProperty.call(node, key)) {
+            scan(node[key], path ? path + "/" + key : key);
+          }
+        }
+      }
+
+      scan(root, "");
+
+      if (candidates.length === 0) return null;
+
+      candidates.sort((a, b) => {
+        const timeA = Number(a.reading.timestamp || a.reading.updatedAt || a.reading.time || 0);
+        const timeB = Number(b.reading.timestamp || b.reading.updatedAt || b.reading.time || 0);
+        return timeB - timeA;
+      });
+
+      return candidates[0];
+    }
+
+    function analyzeReading(reading) {
+      const heartRate = getNumber(reading, ["heartRate", "heart_rate", "pulse", "bpm", "hr"]);
+      const temperature = getNumber(reading, ["temperature", "bodyTemperature", "temp"]);
+      const conductivity = getNumber(reading, ["conductivity", "tissueConductivity", "tissue_conductivity"]);
+      const stability = getNumber(reading, ["stability", "stabilityScore", "stability_score"]);
+
+      const firebaseAlert = getBoolean(reading, [
+        "alert",
+        "isAlert",
+        "dehydrationAlert",
+        "dehydrationRisk",
+        "risk",
+        "forceAlert"
+      ]);
+
+      const connectedFromFirebase = getBoolean(reading, [
+        "connected",
+        "patchConnected",
+        "connectionStatus",
+        "isConnected",
+        "patientConnected",
+        "appConnected",
+        "patientAppConnected",
+        "patchStatus"
+      ]);
+
+      const heartRisk = heartRate !== null && heartRate > THRESHOLDS.heartRate;
+      const tempRisk = temperature !== null && (temperature < THRESHOLDS.tempLow || temperature > THRESHOLDS.tempHigh);
+      const conductivityRisk = conductivity !== null && conductivity < THRESHOLDS.conductivity;
+      const stabilityRisk = stability !== null && stability < THRESHOLDS.stability;
+
+      const risk = firebaseAlert === true || heartRisk || tempRisk || conductivityRisk || stabilityRisk;
+
+      return {
+        heartRate,
+        temperature,
+        conductivity,
+        stability,
+        heartRisk,
+        tempRisk,
+        conductivityRisk,
+        stabilityRisk,
+        risk,
+        connectedFromFirebase
+      };
+    }
+
+    function setMetric(cardId, noteId, isRisk) {
+      document.getElementById(cardId).classList.toggle("risk", isRisk);
+      document.getElementById(noteId).classList.toggle("risk", isRisk);
+    }
+
+    function showDisconnectedState() {
+      document.getElementById("connection").innerText = "Patient App Disconnected";
+      document.getElementById("connection").classList.remove("connected");
+
+      document.getElementById("statusTitle").innerText = "Patient App Disconnected";
+      document.getElementById("statusMessage").innerText =
+        "No live patient data is currently being received.";
+
+      document.getElementById("heartRate").innerText = "--";
+      document.getElementById("temperature").innerText = "--";
+      document.getElementById("conductivity").innerText = "--";
+      document.getElementById("stability").innerText = "--";
+
+      document.body.classList.remove("risk");
+      document.getElementById("mainStatus").classList.remove("risk");
+      document.getElementById("statusTitle").classList.remove("risk");
+      stopAlertSound();
+      document.getElementById("popup").classList.remove("show");
+    }
+
+    function updateUI(status, timestamp) {
+      // FR02: connection status is based on current Firebase data freshness + optional patient connection field.
+      const now = Date.now();
+      const isFresh = timestamp && now - timestamp < 30000;
+      const connected = status.connectedFromFirebase === true || (status.connectedFromFirebase !== false && isFresh);
+
+      if (!connected) {
+        showDisconnectedState();
+        return;
+      }
+
+      document.getElementById("connection").innerText = "Patient App Connected";
+      document.getElementById("connection").classList.add("connected");
+
+      document.getElementById("heartRate").innerText = status.heartRate ?? "--";
+      document.getElementById("temperature").innerText = status.temperature ?? "--";
+      document.getElementById("conductivity").innerText = status.conductivity ?? "--";
+      document.getElementById("stability").innerText = status.stability ?? "--";
+
+      setMetric("heartCard", "heartNote", status.heartRisk);
+      setMetric("tempCard", "tempNote", status.tempRisk);
+      setMetric("condCard", "condNote", status.conductivityRisk);
+      setMetric("stabCard", "stabNote", status.stabilityRisk);
+
+      document.body.classList.toggle("risk", status.risk);
+      document.getElementById("mainStatus").classList.toggle("risk", status.risk);
+      document.getElementById("statusTitle").classList.toggle("risk", status.risk);
+
+      if (status.risk) {
+        document.getElementById("statusTitle").innerText = "Patient Status: Dehydration Risk";
+        document.getElementById("statusMessage").innerText =
+          "Dehydration risk detected for your patient – please check on your patient.";
+
+        if (!previousRisk) {
+          popupDismissed = false;
+        }
+
+        startAlertSound();
+
+        if (!popupDismissed) {
+          document.getElementById("popup").classList.add("show");
+        }
+      } else {
+        document.getElementById("statusTitle").innerText = "Patient Status: Normal";
+        document.getElementById("statusMessage").innerText =
+          "No dehydration risk is currently detected.";
+        stopAlertSound();
+        document.getElementById("popup").classList.remove("show");
+        popupDismissed = false;
+      }
+
+      previousRisk = status.risk;
+      document.getElementById("lastUpdate").innerText = new Date(timestamp || Date.now()).toLocaleString();
+    }
+
+    function saveHistory(status, timestamp) {
+      if (!timestamp) timestamp = Date.now();
+
+      // Avoid saving the same reading many times if Firebase sends multiple value events.
+      const signature = [
+        latestReadingKey,
+        status.heartRate,
+        status.temperature,
+        status.conductivity,
+        status.stability,
+        status.risk
+      ].join("|");
+
+      if (timestamp === lastSavedTimestamp && signature === window.lastSignature) return;
+
+      window.lastSignature = signature;
+      lastSavedTimestamp = timestamp;
+
+      database.ref("caregiverHistory").push({
+        timestamp: timestamp,
+        heartRate: status.heartRate,
+        temperature: status.temperature,
+        conductivity: status.conductivity,
+        stability: status.stability,
+        risk: status.risk
+      });
+
+      cleanupOldHistory();
+    }
+
+    function cleanupOldHistory() {
+      const cutoff = Date.now() - SEVEN_DAYS_MS;
+
+      database.ref("caregiverHistory")
+        .orderByChild("timestamp")
+        .endAt(cutoff)
+        .once("value", snapshot => {
+          snapshot.forEach(child => {
+            child.ref.remove();
+          });
+        });
+    }
+
+    function loadHistory() {
+      const cutoff = Date.now() - SEVEN_DAYS_MS;
+
+      database.ref("caregiverHistory")
+        .orderByChild("timestamp")
+        .startAt(cutoff)
+        .limitToLast(30)
+        .on("value", snapshot => {
+          historyRows = [];
+
+          snapshot.forEach(child => {
+            const item = child.val();
+            if (item && item.timestamp) {
+              historyRows.push(item);
+            }
+          });
+
+          historyRows.sort((a, b) => a.timestamp - b.timestamp);
+          updateHistoryList();
+          updateChartsFromHistory();
+        });
+    }
+
+    function updateHistoryList() {
+      const history = document.getElementById("history");
+      history.innerHTML = "";
+
+      const latest = historyRows.slice(-6).reverse();
+
+      if (latest.length === 0) {
+        history.innerHTML = '<div class="history-item">Waiting for patient app data...</div>';
+        return;
+      }
+
+      latest.forEach(item => {
+        const div = document.createElement("div");
+        div.className = item.risk ? "history-item risk" : "history-item";
+        div.innerText =
+          `${item.risk ? "⚠️ " : ""}${new Date(item.timestamp).toLocaleTimeString()} | ` +
+          `HR: ${item.heartRate ?? "--"} BPM, ` +
+          `Temp: ${item.temperature ?? "--"}°C, ` +
+          `Conductivity: ${item.conductivity ?? "--"}%, ` +
+          `Stability: ${item.stability ?? "--"}`;
+
+        history.appendChild(div);
+      });
+    }
+
+    let chartsInitialized = false;
+    let heartChart, tempChart, condChart, stabChart;
+
+    function initializeCharts() {
+      if (chartsInitialized) return;
+      chartsInitialized = true;
+
+      heartChart = createChart("heartChart", "Heart Rate");
+      tempChart = createChart("tempChart", "Temperature");
+      condChart = createChart("condChart", "Conductivity");
+      stabChart = createChart("stabChart", "Stability");
+
+      loadHistory();
+    }
+
+    function createChart(canvasId, label) {
+      const canvas = document.getElementById(canvasId);
+
+      return new Chart(canvas, {
+        type: "line",
+        data: {
+          labels: [],
+          datasets: [{
+            label: label,
+            data: [],
+            tension: 0.25,
+            fill: false
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          plugins: {
+            legend: {
+              display: false
+            }
+          },
+          scales: {
+            x: {
+              ticks: {
+                maxTicksLimit: 4
+              }
+            },
+            y: {
+              ticks: {
+                maxTicksLimit: 5
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function updateChart(chart, labels, data) {
+      if (!chart) return;
+
+      chart.data.labels = labels;
+      chart.data.datasets[0].data = data;
+      chart.update();
+    }
+
+    function updateChartsFromHistory() {
+      const rows = historyRows.slice(-15);
+      const labels = rows.map(item => new Date(item.timestamp).toLocaleTimeString());
+
+      updateChart(heartChart, labels, rows.map(item => item.heartRate));
+      updateChart(tempChart, labels, rows.map(item => item.temperature));
+      updateChart(condChart, labels, rows.map(item => item.conductivity));
+      updateChart(stabChart, labels, rows.map(item => item.stability));
+    }
+
+    function setDisconnected() {
+      showDisconnectedState();
+    }
+
+    // Listen to the database.
+    // The code scans the database and finds the latest object that looks like patient readings.
+    database.ref("/").on("value", snapshot => {
+      const data = snapshot.val();
+      const result = findReading(data);
+
+      if (!result) {
+        setDisconnected();
+        return;
+      }
+
+      latestReadingKey = result.key;
+      const status = analyzeReading(result.reading);
+      const timestamp = Number(result.reading.timestamp || result.reading.updatedAt || result.reading.time || Date.now());
+
+      updateUI(status, timestamp);
+      saveHistory(status, timestamp);
+    }, error => {
+      console.error("Firebase error:", error);
+      setDisconnected();
+    });
+
+    // Refresh connection status every 10 seconds according to data freshness.
+    setInterval(() => {
+      if (lastSavedTimestamp && Date.now() - lastSavedTimestamp > 30000) {
+        setDisconnected();
+      }
+    }, 10000);
+  </script>
+</body>
+</html>
